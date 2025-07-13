@@ -3,7 +3,7 @@ LABEL maintainer="metowolf <i@i-meto.com>"
 
 ARG TARGETOS
 ARG TARGETARCH
-ARG VERSION=5.0.0b2
+ARG VERSION=5.0.0
 
 RUN apt-get update \
   && apt-get install -y \
