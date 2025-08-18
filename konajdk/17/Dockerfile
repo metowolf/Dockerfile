@@ -1,6 +1,6 @@
 FROM buildpack-deps:bullseye-scm
 
-ARG IMAGE_VERSION=17.0.13
+ARG IMAGE_VERSION=17.0.16
 
 RUN set -eux; \
 	apt-get update; \
@@ -33,7 +33,7 @@ ENV LANG C.UTF-8
 # >	
 # > Java Development Kit builds, from Oracle	
 # >	
-ENV JAVA_VERSION 17.0.13
+ENV JAVA_VERSION 17.0.16
 
 RUN set -eux; \
 	\
