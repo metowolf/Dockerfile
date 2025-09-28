@@ -45,10 +45,10 @@ RUN set -eux; \
 	arch="$(dpkg --print-architecture)"; \
 	case "$arch" in \
 		'amd64') \
-			downloadUrl="https://github.com/Tencent/TencentKona-8/releases/download/TencentKona-${JAVA_VERSION}/TencentKona${JAVA_VERSION}.b1_jdk_linux-x86_64_8u462.tar.gz"; \
+			downloadUrl="https://github.com/Tencent/TencentKona-8/releases/download/${JAVA_VERSION}-GA/TencentKona${JAVA_VERSION}.b1_jdk_linux-x86_64_8u462.tar.gz"; \
 			;; \
 		'arm64') \
-			downloadUrl="https://github.com/Tencent/TencentKona-8/releases/download/TencentKona-${JAVA_VERSION}/TencentKona${JAVA_VERSION}.b1_jdk_linux-aarch64_8u462.tar.gz"; \
+			downloadUrl="https://github.com/Tencent/TencentKona-8/releases/download/${JAVA_VERSION}-GA/TencentKona${JAVA_VERSION}.b1_jdk_linux-aarch64_8u462.tar.gz"; \
 			;; \
 		*) echo >&2 "error: unsupported architecture: '$arch'"; exit 1 ;; \
 	esac; \
@@ -69,6 +69,7 @@ RUN set -eux; \
 #     http://rabexc.org/posts/certificates-not-working-java#comment-4099504075
 #     https://salsa.debian.org/java-team/ca-certificates-java/blob/3e51a84e9104823319abeb31f880580e46f45a98/debian/jks-keystore.hook.in
 #     https://git.alpinelinux.org/aports/tree/community/java-cacerts/APKBUILD?id=761af65f38b4570093461e6546dcf6b179d2b624#n29
+	mkdir -p "$JAVA_HOME/lib/security"; \
 	{ \
 		echo '#!/usr/bin/env bash'; \
 		echo 'set -Eeuo pipefail'; \
