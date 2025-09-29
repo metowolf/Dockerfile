@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 LABEL maintainer="metowolf <i@i-meto.com>"
 
 ARG TARGETOS
