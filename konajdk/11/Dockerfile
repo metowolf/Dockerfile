@@ -1,6 +1,6 @@
 FROM buildpack-deps:bullseye-scm
 
-ARG IMAGE_VERSION=11.0.28
+ARG IMAGE_VERSION=11.0.29
 
 RUN set -eux; \
 	apt-get update; \
@@ -32,7 +32,7 @@ ENV LANG C.UTF-8
 # >
 # > These binaries are built by Red Hat on their infrastructure on behalf of the OpenJDK jdk8u and jdk11u projects. The binaries are created from the unmodified source code at OpenJDK. Although no formal support agreement is provided, please report any bugs you may find to https://bugs.java.com/.
 # >
-ENV JAVA_VERSION 11.0.28
+ENV JAVA_VERSION 11.0.29
 # https://github.com/docker-library/openjdk/issues/320#issuecomment-494050246
 # >
 # > I am the OpenJDK 8 and 11 Updates OpenJDK project lead.
