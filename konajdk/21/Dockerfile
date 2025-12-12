@@ -1,4 +1,4 @@
-FROM buildpack-deps:bullseye-scm
+FROM buildpack-deps:bookworm-scm
 
 ARG IMAGE_VERSION=21.0.9
 
