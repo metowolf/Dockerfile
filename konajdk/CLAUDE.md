@@ -20,6 +20,9 @@ gh release list --repo Tencent/TencentKona-17 --limit 5
 
 # KonaJDK 21
 gh release list --repo Tencent/TencentKona-21 --limit 5
+
+# KonaJDK 25
+gh release list --repo Tencent/TencentKona-25 --limit 5
 ```
 
 ### 2. Verify Asset Names
@@ -42,6 +45,7 @@ Update the `ARG IMAGE_VERSION` and `ENV JAVA_VERSION` in each Dockerfile:
 - `konajdk/11/Dockerfile`
 - `konajdk/17/Dockerfile`
 - `konajdk/21/Dockerfile`
+- `konajdk/25/Dockerfile`
 
 ### 4. Special Considerations for KonaJDK 8
 
@@ -70,6 +74,7 @@ cd konajdk/8 && docker build --platform linux/amd64 -t konajdk:8.0.24-test . &
 cd konajdk/11 && docker build --platform linux/amd64 -t konajdk:11.0.29-test . &
 cd konajdk/17 && docker build --platform linux/amd64 -t konajdk:17.0.17-test . &
 cd konajdk/21 && docker build --platform linux/amd64 -t konajdk:21.0.9-test . &
+cd konajdk/25 && docker build --platform linux/amd64 -t konajdk:25.0.1-test . &
 wait
 
 # Test all images
@@ -77,6 +82,7 @@ docker run --rm konajdk:8.0.24-test java -version
 docker run --rm konajdk:11.0.29-test java --version
 docker run --rm konajdk:17.0.17-test java --version
 docker run --rm konajdk:21.0.9-test java --version
+docker run --rm konajdk:25.0.1-test java --version
 ```
 
 ### 6. Commit and Push
@@ -92,6 +98,7 @@ git commit -m "chore(konajdk): 更新所有 KonaJDK 版本到最新 GA 版本
 - KonaJDK 11: X.X.X → Y.Y.Y
 - KonaJDK 17: X.X.X → Y.Y.Y
 - KonaJDK 21: X.X.X → Y.Y.Y
+- KonaJDK 25: X.X.X → Y.Y.Y
 "
 
 # If KonaJDK 8 download URL changed
@@ -129,10 +136,11 @@ downloadUrl="https://github.com/Tencent/TencentKona-8/releases/download/${JAVA_V
 
 ## Version History
 
-| Date | KonaJDK 8 | KonaJDK 11 | KonaJDK 17 | KonaJDK 21 | Notes |
-|------|-----------|------------|------------|------------|-------|
-| 2025-11-09 | 8.0.24 (8u472) | 11.0.29 | 17.0.17 | 21.0.9 | Updated all versions to latest GA |
-| 2025-07-28 | 8.0.23 (8u462) | 11.0.28 | 17.0.16 | 21.0.8 | Previous stable versions |
+| Date | KonaJDK 8 | KonaJDK 11 | KonaJDK 17 | KonaJDK 21 | KonaJDK 25 | Notes |
+|------|-----------|------------|------------|------------|------------|-------|
+| 2025-12-29 | 8.0.24 (8u472) | 11.0.29 | 17.0.17 | 21.0.9 | 25.0.1 | Added KonaJDK 25 support |
+| 2025-11-09 | 8.0.24 (8u472) | 11.0.29 | 17.0.17 | 21.0.9 | - | Updated all versions to latest GA |
+| 2025-07-28 | 8.0.23 (8u462) | 11.0.28 | 17.0.16 | 21.0.8 | - | Previous stable versions |
 
 ## Release Tags
 
@@ -142,6 +150,7 @@ Each Tencent KonaJDK repository uses different tag formats:
 - **KonaJDK 11**: `kona11.0.29`
 - **KonaJDK 17**: `TencentKona-17.0.17`
 - **KonaJDK 21**: `TencentKona-21.0.9`
+- **KonaJDK 25**: `TencentKona-25.0.1`
 
 ## Useful Commands
 
@@ -157,6 +166,7 @@ gh run list --workflow konajdk-8.yaml
 gh run list --workflow konajdk-11.yaml
 gh run list --workflow konajdk-17.yaml
 gh run list --workflow konajdk-21.yaml
+gh run list --workflow konajdk-25.yaml
 ```
 
 ## References
@@ -165,3 +175,4 @@ gh run list --workflow konajdk-21.yaml
 - [Tencent Kona JDK 11](https://github.com/Tencent/TencentKona-11)
 - [Tencent Kona JDK 17](https://github.com/Tencent/TencentKona-17)
 - [Tencent Kona JDK 21](https://github.com/Tencent/TencentKona-21)
+- [Tencent Kona JDK 25](https://github.com/Tencent/TencentKona-25)
