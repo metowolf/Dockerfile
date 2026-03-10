@@ -22,10 +22,10 @@ if [ ! -f /var/lib/cloudflare-warp/reg.json ]; then
     fi
     # connect to the warp server
     warp-cli mode proxy
-    warp-cli proxy port 1080
+    warp-cli proxy port 1081
     warp-cli connect
 else
     echo "Warp client already registered, skip registration"
 fi
 
-exec tail -f /dev/null
+exec socat tcp-listen:1080,reuseaddr,fork tcp:localhost:1081

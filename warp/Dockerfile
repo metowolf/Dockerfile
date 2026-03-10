@@ -2,7 +2,7 @@ FROM debian:12
 
 ARG TARGETARCH
 
-RUN apt-get update && apt-get install -y curl gnupg unzip \
+RUN apt-get update && apt-get install -y curl gnupg unzip socat \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl https://pkg.cloudflareclient.com/pubkey.gpg | gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg \
