@@ -1,4 +1,4 @@
-ARG VERSION=5.0.1
+ARG VERSION=6.0.0b1
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -21,6 +21,7 @@ RUN apt-get update \
 RUN set -eux; \
   case "$TARGETARCH" in \
     "amd64") snell_arch="amd64" ;; \
+    "386") snell_arch="i386" ;; \
     "arm64") snell_arch="aarch64" ;; \
     *) echo "Unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
   esac; \
