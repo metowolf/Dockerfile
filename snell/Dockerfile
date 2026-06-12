@@ -2,18 +2,24 @@ ARG VERSION=6.0.0b1
 ARG TARGETOS
 ARG TARGETARCH
 
-FROM debian:bookworm-slim AS builder
+FROM ubuntu:20.04 AS builder
 LABEL maintainer="metowolf <i@i-meto.com>"
 
 ARG VERSION
 ARG TARGETOS
 ARG TARGETARCH
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     dumb-init \
+    libc-ares2 \
+    libsodium23 \
+    libssl1.1 \
+    libuv1 \
     unzip \
     wget \
   && rm -rf /var/lib/apt/lists/*
@@ -47,9 +53,14 @@ COPY --from=builder /usr/local/bin/entrypoint /usr/local/bin/entrypoint
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 # Copy required libraries for snell-server
-COPY --from=builder /lib/x86_64-linux-gnu/libstdc++.so.6 /lib/x86_64-linux-gnu/
-COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/
-COPY --from=builder /lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libcares.so.2 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libsodium.so.23 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/libuv.so.1 /lib/x86_64-linux-gnu/
 
 ENV PSK=uYQwNqZbaIOMiZ6Zni8v5x0M09Y8bSK \
     LISTEN=0.0.0.0:9000 \
