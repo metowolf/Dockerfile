@@ -1,4 +1,4 @@
-ARG VERSION=6.0.0b2
+ARG VERSION=6.0.0b3
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -44,6 +44,22 @@ RUN gcc -std=c11 -O2 -pipe /tmp/entrypoint.c -o /usr/local/bin/entrypoint \
   && strip /usr/local/bin/entrypoint \
   && rm -f /tmp/entrypoint.c
 
+RUN set -eux; \
+  mkdir -p /deps; \
+  for lib in \
+    libstdc++.so.6 \
+    libgcc_s.so.1 \
+    libm.so.6 \
+    libcares.so.2 \
+    libcrypto.so.1.1 \
+    libssl.so.1.1 \
+    libsodium.so.23 \
+    libuv.so.1 \
+  ; do \
+    src=$(find /usr/lib /lib -name "$lib" 2>/dev/null | head -1); \
+    [ -n "$src" ] && cp --parents "$src" /deps/ || echo "WARNING: $lib not found" >&2; \
+  done
+
 FROM gcr.io/distroless/base-debian12
 LABEL maintainer="metowolf <i@i-meto.com>"
 
@@ -51,16 +67,7 @@ COPY --from=builder /usr/bin/dumb-init /usr/bin/dumb-init
 COPY --from=builder /usr/local/bin/snell-server /usr/local/bin/snell-server
 COPY --from=builder /usr/local/bin/entrypoint /usr/local/bin/entrypoint
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-
-# Copy required libraries for snell-server
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libcares.so.2 /lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libsodium.so.23 /lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libuv.so.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /deps/ /
 
 ENV PSK=uYQwNqZbaIOMiZ6Zni8v5x0M09Y8bSK \
     LISTEN=0.0.0.0:9000 \
