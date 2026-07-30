@@ -138,6 +138,7 @@ downloadUrl="https://github.com/Tencent/TencentKona-8/releases/download/${JAVA_V
 
 | Date | KonaJDK 8 | KonaJDK 11 | KonaJDK 17 | KonaJDK 21 | KonaJDK 25 | Notes |
 |------|-----------|------------|------------|------------|------------|-------|
+| 2026-07-30 | 8.0.27 (8u502) | 11.0.32 | 17.0.20 | 21.0.12 | 25.0.4 | Updated all versions to latest GA |
 | 2026-05-01 | 8.0.26 (8u492) | 11.0.31 | 17.0.19 | 21.0.11 | 25.0.3 | Updated all versions to latest GA |
 | 2025-12-29 | 8.0.24 (8u472) | 11.0.29 | 17.0.17 | 21.0.9 | 25.0.1 | Added KonaJDK 25 support |
 | 2025-11-09 | 8.0.24 (8u472) | 11.0.29 | 17.0.17 | 21.0.9 | - | Updated all versions to latest GA |
@@ -147,11 +148,11 @@ downloadUrl="https://github.com/Tencent/TencentKona-8/releases/download/${JAVA_V
 
 Each Tencent KonaJDK repository uses different tag formats:
 
-- **KonaJDK 8**: `8.0.26-GA`
-- **KonaJDK 11**: `kona11.0.31`
-- **KonaJDK 17**: `TencentKona-17.0.19`
-- **KonaJDK 21**: `TencentKona-21.0.11`
-- **KonaJDK 25**: `TencentKona-25.0.3`
+- **KonaJDK 8**: `8.0.27-GA`
+- **KonaJDK 11**: `kona11.0.32`
+- **KonaJDK 17**: `TencentKona-17.0.20`
+- **KonaJDK 21**: `TencentKona-21.0.12`
+- **KonaJDK 25**: `TencentKona-25.0.4`
 
 ## Useful Commands
 
