@@ -1,8 +1,8 @@
-ARG VERSION=6.0.0rc2
+ARG VERSION=6.0.0
 ARG TARGETOS
 ARG TARGETARCH
 
-FROM debian:11-slim AS builder
+FROM debian:12-slim AS builder
 LABEL maintainer="metowolf <i@i-meto.com>"
 
 ARG VERSION
@@ -16,10 +16,6 @@ RUN apt-get update \
     build-essential \
     ca-certificates \
     dumb-init \
-    libc-ares2 \
-    libsodium23 \
-    libssl1.1 \
-    libuv1 \
     unzip \
     wget \
   && rm -rf /var/lib/apt/lists/*
@@ -44,23 +40,19 @@ RUN gcc -std=c11 -O2 -pipe /tmp/entrypoint.c -o /usr/local/bin/entrypoint \
   && strip /usr/local/bin/entrypoint \
   && rm -f /tmp/entrypoint.c
 
+# snell-server 6.x 已静态链接 openssl / sodium / c-ares / libuv，
+# 运行时只需基础镜像自带的 libstdc++ / libgcc_s 兜底。
 RUN set -eux; \
   mkdir -p /deps; \
   for lib in \
     libstdc++.so.6 \
     libgcc_s.so.1 \
-    libm.so.6 \
-    libcares.so.2 \
-    libcrypto.so.1.1 \
-    libssl.so.1.1 \
-    libsodium.so.23 \
-    libuv.so.1 \
   ; do \
     src=$(find /usr/lib /lib -name "$lib" 2>/dev/null | head -1); \
     [ -n "$src" ] && cp --parents "$src" /deps/ || echo "WARNING: $lib not found" >&2; \
   done
 
-FROM debian:11-slim
+FROM debian:12-slim
 LABEL maintainer="metowolf <i@i-meto.com>"
 
 COPY --from=builder /usr/bin/dumb-init /usr/bin/dumb-init
