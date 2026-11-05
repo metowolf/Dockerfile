@@ -1,0 +1,130 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+log() { echo "shadowsocks: $*" >&2; }
+fail() {
+  log "$*"
+  if [[ -f /tmp/warp-svc.log ]]; then
+    tail -n 30 /tmp/warp-svc.log >&2
+  fi
+  exit 1
+}
+
+pids=()
+cleanup() {
+  trap - EXIT INT TERM
+  if (( ${#pids[@]} )); then
+    kill "${pids[@]}" 2>/dev/null || true
+    wait "${pids[@]}" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+case "${WARP:-false}" in
+  true) warp_enabled=true ;;
+  false|"") warp_enabled=false ;;
+  *) fail "WARP must be 'true' or 'false' (got '${WARP}')" ;;
+esac
+
+[[ ${SS_PORT:-} =~ ^[0-9]{1,5}$ ]] || fail "SS_PORT must be a valid port number"
+SS_PORT=$((10#$SS_PORT))
+(( SS_PORT > 0 && SS_PORT <= 65535 )) || fail "SS_PORT must be 1..65535"
+if [[ $warp_enabled == true ]]; then
+  (( SS_PORT != 1080 && SS_PORT != 1081 )) \
+    || fail "SS_PORT must not be 1080 or 1081 when WARP=true"
+fi
+
+[[ -n ${SS_PASSWORD:-} ]] || fail "SS_PASSWORD must not be empty"
+[[ -n ${SS_METHOD:-} && -n ${SS_LISTEN:-} ]] || fail "SS_METHOD and SS_LISTEN must not be empty"
+
+# jq escapes passwords/addresses safely; do not print the config or password.
+umask 077
+mkdir -p /run/shadowsocks
+
+if [[ $warp_enabled == false ]]; then
+  jq -n --arg server "$SS_LISTEN" --argjson port "$SS_PORT" \
+    --arg password "$SS_PASSWORD" --arg method "$SS_METHOD" \
+    '{server: $server, server_port: $port, password: $password,
+      method: $method, mode: "tcp_and_udp"}' \
+    > /run/shadowsocks/config.json
+
+  log "Starting Shadowsocks server on ${SS_LISTEN}:${SS_PORT} (${SS_METHOD})"
+  exec ssserver -c /run/shadowsocks/config.json
+fi
+
+[[ ${WARP_TIMEOUT:-} =~ ^[1-9][0-9]{0,3}$ ]] || fail "WARP_TIMEOUT must be 1..9999 seconds"
+
+jq -n --arg server "$SS_LISTEN" --argjson port "$SS_PORT" \
+  --arg password "$SS_PASSWORD" --arg method "$SS_METHOD" \
+  '{server: $server, server_port: $port, password: $password,
+    method: $method, mode: "tcp_only",
+    outbound_proxy: "socks5://127.0.0.1:1080"}' \
+  > /run/shadowsocks/config.json
+
+warp-svc --accept-tos > /tmp/warp-svc.log 2>&1 &
+warp_pid=$!
+pids+=("$warp_pid")
+deadline=$((SECONDS + WARP_TIMEOUT))
+
+# Bound every CLI call as well as the polling loops by the startup deadline.
+warp() {
+  local remaining=$((deadline - SECONDS))
+  (( remaining > 0 )) || fail "WARP startup timed out after ${WARP_TIMEOUT}s"
+  timeout --foreground "$remaining" warp-cli --accept-tos --no-ansi "$@"
+}
+check_daemon() {
+  kill -0 "$warp_pid" 2>/dev/null || fail "warp-svc exited during startup"
+  (( SECONDS < deadline )) || fail "WARP startup timed out after ${WARP_TIMEOUT}s"
+}
+
+log "Waiting for warp-svc"
+until warp status > /dev/null 2>&1; do
+  check_daemon
+  sleep 1
+done
+
+if [[ ! -f /var/lib/cloudflare-warp/reg.json ]]; then
+  warp registration new || fail "WARP registration failed"
+fi
+if [[ -n ${WARP_LICENSE:-} ]]; then
+  warp registration license "$WARP_LICENSE" || fail "WARP license registration failed"
+fi
+if [[ -n ${WARP_CUSTOM_ENDPOINT:-} ]]; then
+  warp tunnel endpoint set "$WARP_CUSTOM_ENDPOINT" || fail "WARP custom endpoint failed"
+fi
+
+# Always reapply mode/port/connect, including when using a persisted registration.
+warp mode proxy || fail "Could not enable WARP proxy mode"
+warp proxy port 1081 || fail "Could not set WARP proxy port"
+warp connect || fail "Could not connect WARP"
+
+log "Waiting for WARP Connected status"
+until warp status | grep -qE 'Status update: Connected[[:space:]]*$'; do
+  check_daemon
+  sleep 1
+done
+
+# Keep the compatibility relay local: it must not become a public SOCKS proxy.
+socat TCP-LISTEN:1080,bind=127.0.0.1,reuseaddr,fork TCP:127.0.0.1:1081 &
+relay_pid=$!
+pids+=("$relay_pid")
+
+log "Checking WARP SOCKS egress"
+until trace=$(curl --noproxy '' --silent --show-error --fail \
+  --connect-timeout 2 --max-time 5 --socks5 127.0.0.1:1080 \
+  https://1.1.1.1/cdn-cgi/trace) && grep -qE '^warp=(on|plus)$' <<< "$trace"; do
+  check_daemon
+  kill -0 "$relay_pid" 2>/dev/null || fail "WARP SOCKS relay exited during startup"
+  sleep 1
+done
+
+log "WARP ready; starting Shadowsocks TCP server on ${SS_LISTEN}:${SS_PORT} (${SS_METHOD})"
+ssserver -c /run/shadowsocks/config.json &
+pids+=("$!")
+
+# Stop the container if any required service exits, even with status zero.
+status=0
+wait -n "${pids[@]}" || status=$?
+fail "A required service exited (status ${status}); stopping container"
