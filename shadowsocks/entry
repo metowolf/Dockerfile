@@ -1,0 +1,125 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+log() { echo "shadowsocks: $*" >&2; }
+fail() {
+  log "$*"
+  if [[ ${warp_enabled:-false} == true && -f /tmp/warp-svc.log ]]; then
+    tail -n 30 /tmp/warp-svc.log >&2
+  fi
+  exit 1
+}
+
+SS_PORT=${SS_PORT-8388}
+SS_METHOD=${SS_METHOD-chacha20-ietf-poly1305}
+SS_LISTEN=${SS_LISTEN-0.0.0.0}
+WARP=${WARP-}
+WARP_TIMEOUT=${WARP_TIMEOUT-120}
+
+case ${WARP,,} in
+  true|1|yes) warp_enabled=true ;;
+  false|0|no|'') warp_enabled=false ;;
+  *) fail "WARP must be true/1/yes or false/0/no (or unset)" ;;
+esac
+
+[[ $SS_PORT =~ ^[0-9]{1,5}$ ]] || fail "SS_PORT must be a port number"
+SS_PORT=$((10#$SS_PORT))
+(( SS_PORT > 0 && SS_PORT <= 65535 )) || fail "SS_PORT must be 1..65535"
+[[ -n ${SS_PASSWORD:-} ]] || fail "SS_PASSWORD must not be empty"
+[[ -n $SS_METHOD && -n $SS_LISTEN ]] || fail "SS_METHOD and SS_LISTEN must not be empty"
+if [[ $warp_enabled == true ]]; then
+  (( SS_PORT != 1080 )) || fail "SS_PORT must not conflict with WARP SOCKS port 1080"
+  [[ $WARP_TIMEOUT =~ ^[1-9][0-9]{0,3}$ ]] || fail "WARP_TIMEOUT must be 1..9999 seconds"
+fi
+
+# jq escapes passwords/addresses safely; do not print the config or password.
+umask 077
+mkdir -p /run/shadowsocks
+jq -n --arg server "$SS_LISTEN" --argjson port "$SS_PORT" \
+  --arg password "$SS_PASSWORD" --arg method "$SS_METHOD" \
+  --argjson warp "$warp_enabled" \
+  '{server: $server, server_port: $port, password: $password, method: $method}
+    + if $warp then
+        {mode: "tcp_only", outbound_proxy: "socks5://127.0.0.1:1080"}
+      else
+        {mode: "tcp_and_udp"}
+      end' > /run/shadowsocks/config.json
+
+if [[ $warp_enabled == false ]]; then
+  log "Starting Shadowsocks TCP/UDP server on ${SS_LISTEN}:${SS_PORT} (${SS_METHOD}); direct egress"
+  exec ssserver -c /run/shadowsocks/config.json
+fi
+
+pids=()
+cleanup() {
+  trap - EXIT INT TERM
+  if (( ${#pids[@]} )); then
+    kill "${pids[@]}" 2>/dev/null || true
+    wait "${pids[@]}" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+warp-svc --accept-tos > /tmp/warp-svc.log 2>&1 &
+warp_pid=$!
+pids+=("$warp_pid")
+deadline=$((SECONDS + WARP_TIMEOUT))
+
+# Bound CLI calls and the egress probe by the same startup deadline.
+within_deadline() {
+  local remaining=$((deadline - SECONDS))
+  (( remaining > 0 )) || fail "WARP startup timed out after ${WARP_TIMEOUT}s"
+  timeout --foreground "$remaining" "$@"
+}
+warp() { within_deadline warp-cli --accept-tos --no-ansi "$@"; }
+check_daemon() {
+  kill -0 "$warp_pid" 2>/dev/null || fail "warp-svc exited during startup"
+  (( SECONDS < deadline )) || fail "WARP startup timed out after ${WARP_TIMEOUT}s"
+}
+
+log "Waiting for warp-svc"
+until warp status > /dev/null 2>&1; do
+  check_daemon
+  sleep 1
+done
+
+if [[ ! -f /var/lib/cloudflare-warp/reg.json ]]; then
+  warp registration new || fail "WARP registration failed"
+fi
+if [[ -n ${WARP_LICENSE:-} ]]; then
+  warp registration license "$WARP_LICENSE" || fail "WARP license registration failed"
+fi
+if [[ -n ${WARP_CUSTOM_ENDPOINT:-} ]]; then
+  warp tunnel endpoint set "$WARP_CUSTOM_ENDPOINT" || fail "WARP custom endpoint failed"
+fi
+
+# Reapply settings and connect even when using a persisted registration.
+warp mode proxy || fail "Could not enable WARP proxy mode"
+warp proxy port 1080 || fail "Could not set WARP proxy port"
+warp connect || fail "Could not connect WARP"
+
+log "Waiting for WARP Connected status"
+until warp status | grep -qE 'Status update: Connected[[:space:]]*$'; do
+  check_daemon
+  sleep 1
+done
+
+log "Checking WARP SOCKS egress"
+until trace=$(within_deadline curl --noproxy '' --silent --show-error --fail \
+  --connect-timeout 2 --max-time 5 --socks5 127.0.0.1:1080 \
+  https://1.1.1.1/cdn-cgi/trace) && grep -qE '^warp=(on|plus)$' <<< "$trace"; do
+  check_daemon
+  sleep 1
+done
+check_daemon
+
+log "WARP ready; starting Shadowsocks TCP server on ${SS_LISTEN}:${SS_PORT} (${SS_METHOD})"
+ssserver -c /run/shadowsocks/config.json &
+pids+=("$!")
+
+# Stop the container if either required service exits, even with status zero.
+status=0
+wait -n "${pids[@]}" || status=$?
+fail "A required service exited (status ${status}); stopping container"
