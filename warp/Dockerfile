@@ -1,4 +1,4 @@
-FROM debian:12
+FROM debian:13
 
 ARG TARGETARCH
 
@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y curl gnupg unzip socat \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl https://pkg.cloudflareclient.com/pubkey.gpg | gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg \
-    && echo "deb [arch=${TARGETARCH} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ bookworm main" | tee /etc/apt/sources.list.d/cloudflare-client.list \
+    && echo "deb [arch=${TARGETARCH} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ trixie main" | tee /etc/apt/sources.list.d/cloudflare-client.list \
     && apt-get update \
     && apt-get install -y cloudflare-warp \
     && rm -rf /var/lib/apt/lists/* \
