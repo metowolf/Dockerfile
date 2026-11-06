@@ -2,7 +2,7 @@ ARG VERSION=6.0.0
 ARG TARGETOS
 ARG TARGETARCH
 
-FROM debian:12-slim AS builder
+FROM debian:13-slim AS builder
 LABEL maintainer="metowolf <i@i-meto.com>"
 
 ARG VERSION
@@ -52,7 +52,7 @@ RUN set -eux; \
     [ -n "$src" ] && cp --parents "$src" /deps/ || echo "WARNING: $lib not found" >&2; \
   done
 
-FROM debian:12-slim
+FROM debian:13-slim
 LABEL maintainer="metowolf <i@i-meto.com>"
 
 COPY --from=builder /usr/bin/dumb-init /usr/bin/dumb-init
